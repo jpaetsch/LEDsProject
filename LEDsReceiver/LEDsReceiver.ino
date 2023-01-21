@@ -13,7 +13,7 @@
 // Wifi Configuration Constants
 const char* SSID = "DiagonAlley";             // Network name to connect to
 const char* PWD = "selmaN9687";               // Network password
-const char* HOSTNAME = "LEDsReceiver-Jacob";  // Hostname and service name - MUST contain LEDsReceiver and then a unique id
+const char* HOSTNAME = "LEDsReceiver-Jacob";  // Hostname and service name - MUST contain LEDsReceiver and then a unique local network id
 
 // FastLED Configuration Constants
 #define LED_TYPE WS2812B                      // LED chipset
@@ -144,10 +144,10 @@ bool parseAndSetPattern() {
 }
 
 /*
-  Handler to provide static root connection response describing where to go for api usage
+  Handler to provide static root connection response describing api usage
 */
 void handleOnConnect() {
-  String rootResponse = "Online and accessible - see https://github.com/jpaetsch/LEDsReceiver/wiki/Public-API for API routes and usage";
+  String rootResponse = "GET status\r\nPOST turnOff\r\nPOST setPattern\r\n";
   sendJsonStatus(200, rootResponse);
 }
 
