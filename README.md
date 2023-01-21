@@ -2,12 +2,17 @@
 
 ## Table of Contents
 * [Summary](#summary)
+* [Architecture](#architecture)
 * [Setup & Usage](#setup-&-usage)
 * [Technologies](#technologies)
 * [Inspiration](#inspiration)
 
 ## Summary
 A project involving the remote control of an LED lightstrip on a WiFi network. It involves an Android app developed in a modern Kotlin architectural style that interfaces a custom API hosted on an ESP32 Microcontroller which is configured as a web server. This microcontroller is hardwired to a fully-addressible app WS2812B LED lightstrip; both of these are powered by an external 5V power source.
+
+## Architecture
+![General Architecture Diagram](documentation/LEDsProjectArchitecture.png)
+[Edit Source Document](https://app.diagrams.net/#G1grlmBMnNhJxIqO1p9Py0KbEwqqTXZHo6)
 
 ## Setup & Usage
 Flash the .ino Arduino and C/C++ source code onto the ESP32. Wire the ESP32 output pin to the data wire of the WS2812B LED strip and ensure both hardware components are powered. Download the Android app onto a compatible device to control the overall system.
