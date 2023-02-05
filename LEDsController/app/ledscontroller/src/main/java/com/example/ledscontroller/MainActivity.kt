@@ -1,124 +1,107 @@
 package com.example.ledscontroller
 
-import android.content.Context
-import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.ledscontroller.models.viewmodels.ReceiverDevice
+import com.example.ledscontroller.repositories.nsd.LEDsDiscovery
 import com.example.ledscontroller.ui.theme.LEDsControllerAppTheme
 import com.example.ledscontroller.utils.Tags
 
 
 class MainActivity : ComponentActivity() {
 
-    private val SERVICE_TYPE = "_http._tcp"
-    private val nsdManager: NsdManager by lazy {
-        (getSystemService(Context.NSD_SERVICE) as NsdManager)
-    }
+    // TODO fix up this section - is device options necessary?
+    // TODO get the composable stuff working and then add state for connection after...
+
     private var deviceOptions = ArrayList<ReceiverDevice>()
 
-    private val nsdDiscoveryListener = object : NsdManager.DiscoveryListener {
-        override fun onDiscoveryStarted(regType: String) {
-            Log.d(Tags.nsdDiscoveryListener, "Service discovery started")
-        }
-        override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.e(Tags.nsdDiscoveryListener, "Discovery start failed with error code: $errorCode")
-            nsdManager.stopServiceDiscovery(this)
-        }
-        override fun onDiscoveryStopped(serviceType: String) {
-            Log.d(Tags.nsdDiscoveryListener, "Discovery stopped: $serviceType")
-        }
-        override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.e(Tags.nsdDiscoveryListener, "Discovery stop failed with error code: $errorCode")
-            nsdManager.stopServiceDiscovery(this)
-        }
-        override fun onServiceFound(service: NsdServiceInfo) {
-            Log.d(Tags.nsdDiscoveryListener, "Service found: $service")
-            when {
-                service.serviceName.contains("LEDsReceiver") &&
-                service.serviceType == SERVICE_TYPE ->
-                    nsdManager.resolveService(service, nsdResolveListener)
+    private val ledsServiceDiscovery: LEDsDiscovery? = object : LEDsDiscovery(applicationContext) {
+        override fun onNsdServiceResolved(serviceInfo: NsdServiceInfo) {
+            val serviceDeviceAdded = ReceiverDevice(serviceInfo.serviceName, serviceInfo.host.hostAddress?:"")
+            if (!deviceOptions.contains(serviceDeviceAdded)) {
+                deviceOptions.add(serviceDeviceAdded)
             }
         }
-        override fun onServiceLost(service: NsdServiceInfo) {
-            Log.e(Tags.nsdDiscoveryListener, "Service lost: $service")
-        }
-    }
-
-    private val nsdResolveListener = object : NsdManager.ResolveListener {
-        override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-            Log.d(Tags.nsdResolveListener, "Service resolve succeeded: $serviceInfo")
-            val newDevice = ReceiverDevice(serviceInfo.serviceName, serviceInfo.host.hostAddress ?: "")
-            if (!deviceOptions.contains(newDevice)) {
-                deviceOptions.add(newDevice)
+        override fun onNsdServiceLost(serviceInfo: NsdServiceInfo) {
+            val serviceDeviceLost = ReceiverDevice(serviceInfo.serviceName, serviceInfo.host.hostAddress?:"")
+            if (deviceOptions.contains(serviceDeviceLost)) {
+                deviceOptions.remove(serviceDeviceLost)
             }
         }
-        override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-            Log.e(Tags.nsdResolveListener, "Resolve failed with error code: $errorCode")
-        }
     }
-
-//    private val nsdRegistrationListener = object : NsdManager.RegistrationListener {
-//        override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
-//            Log.d(Tags.nsdRegistrationListener, "Service registration succeeded: $serviceInfo")
-//        }
-//        override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-//            Log.d(Tags.nsdRegistrationListener, "Service registration failed: $serviceInfo")
-//        }
-//        override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
-//            Log.d(Tags.nsdRegistrationListener, "Service unregistered: $serviceInfo")
-//        }
-//        override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-//            Log.d(Tags.nsdRegistrationListener, "Service unregister failed: $serviceInfo")
-//        }
-//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, nsdDiscoveryListener)
+        ledsServiceDiscovery?.initializeListeners()
+        ledsServiceDiscovery?.discoverServices()
 
         setContent {
             LEDsControllerAppTheme {
-                ReceiverDeviceList(deviceOptions)
+                MyApp(modifier = Modifier.fillMaxSize())
+//                ReceiverDeviceList(deviceOptions)
             }
         }
     }
 
     override fun onPause() {
-//        nsdManager.stopServiceDiscovery(nsdDiscoveryListener)
+        ledsServiceDiscovery?.stopDiscovery()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-//        nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, nsdDiscoveryListener)
+        ledsServiceDiscovery?.discoverServices()
     }
 
     override fun onDestroy() {
-        nsdManager.stopServiceDiscovery(nsdDiscoveryListener)
+        ledsServiceDiscovery?.stopDiscovery()
         super.onDestroy()
     }
+}
 
-    @Composable
-    fun ScanForDevicesButton() {
-        ReceiverDeviceList(deviceOptions)
-//        Button(onClick = {nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, nsdDiscoveryListener)}) {
-//
-//        }
+@Composable
+fun Greeting(name: String) {
+
+    Surface(
+        color = MaterialTheme.colorScheme.primary
+    ) {
+        Text(
+            text = "Hello $name!",
+            modifier = Modifier.padding(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun MyApp(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Greeting("Jacob")
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DefaultPreview() {
+    LEDsControllerAppTheme {
+        MyApp()
     }
 }
 
@@ -126,8 +109,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ReceiverDeviceList(receivers: List<ReceiverDevice>) {
-    LazyColumn {
-        items(receivers) { receiver ->
+     LazyColumn(
+         modifier = Modifier.fillMaxWidth()
+     ) {
+        items(
+            items = receivers,
+//            key = { receiver ->
+//                receiver.id
+//            }
+        ) { receiver ->
             ReceiverDeviceCard(receiver)
         }
     }
@@ -135,14 +125,22 @@ fun ReceiverDeviceList(receivers: List<ReceiverDevice>) {
 
 @Composable
 fun ReceiverDeviceCard(receiver: ReceiverDevice) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            painterResource(id = R.drawable.ic_baseline_device_unknown_24),
-            contentDescription = "Unknown device image"
-        )
-        Column {
-            Text(receiver.name)
-            Text(receiver.ip)
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
+    ) {
+        Row(modifier = Modifier.padding(24.dp)) {
+            Column() {
+
+            }
+            Image(
+                painterResource(id = R.drawable.ic_baseline_device_unknown_24),
+                contentDescription = "Unknown device image"
+            )
+            Column {
+                Text(receiver.name)
+                Text(receiver.ip)
+            }
         }
     }
 }
